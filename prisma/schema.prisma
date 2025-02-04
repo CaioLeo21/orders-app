@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model condominium {
+  id_condominium Int      @id @default(autoincrement())
+  name           String   @db.VarChar(255)
+  responsible    String   @db.VarChar(255)
+  doorman        doorman?
+  house          house?
+}
+
+model doorman {
+  id_doorman  Int         @id @default(autoincrement())
+  name        String      @db.VarChar(255)
+  condominium condominium @relation(fields: [id_doorman], references: [id_condominium], onDelete: NoAction, onUpdate: NoAction, map: "doorman_id_fkey")
+  order       order?
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model house {
+  id_house    Int         @id @default(autoincrement())
+  block       String?     @db.VarChar(255)
+  number      String?     @db.VarChar(255)
+  condominium condominium @relation(fields: [id_house], references: [id_condominium], onDelete: NoAction, onUpdate: NoAction, map: "house_id_fkey")
+  person      person?
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model person {
+  id_person   Int     @unique(map: "person_id_key") @default(autoincrement())
+  name        String  @db.VarChar(255)
+  type        String  @db.VarChar(255)
+  status      Boolean
+  observation String? @db.VarChar(255)
+  email       String? @db.VarChar(255)
+  phone       String? @db.VarChar(255)
+  cpf         String  @db.VarChar(255)
+  order       order?
+  house       house   @relation(fields: [id_person], references: [id_house], onDelete: NoAction, onUpdate: NoAction, map: "person_id_fkey")
+
+  @@id([id_person, cpf])
+}
+
+model order {
+  id_order Int      @id(map: "ORDER_pkey") @default(autoincrement())
+  date     DateTime @db.Timestamp(6)
+  sender   String?  @db.VarChar(255)
+  doorman  doorman  @relation(fields: [id_order], references: [id_doorman], onDelete: NoAction, onUpdate: NoAction, map: "ORDER_id_fkey")
+  person   person   @relation(fields: [id_order], references: [id_person], onDelete: NoAction, onUpdate: NoAction, map: "ORDER_id_fkey1")
+}
