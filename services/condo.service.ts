@@ -17,14 +17,11 @@ export class CondoService {
   
   async createCondo(data: { name: string, responsible?: string }) {
     const validatedData = condoSchema.parse(data)
-    
     return await prisma.condo.create({ data: validatedData })
   }
 
-  async updateCondo(data: { name?: string, responsible?: string, }) {
-    const validatedData = condoSchema.parse(data)
-    
-    return await prisma.condo.create({ data: validatedData })
+  async updateCondo(id: number, data: { name?: string, responsible?: string }) {
+    return await prisma.condo.update({ where: { id }, data })
   }
 
   async deleteCondoByID(id: number) {

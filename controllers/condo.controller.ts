@@ -19,8 +19,8 @@ export class CondoController {
     return await condoService.createCondo(data);
   }
 
-  async updateCondo(data: { name: string, responsible?: string }) {
-    return await condoService.updateCondo(data);
+  async updateCondo(id: number, data: { name: string, responsible?: string }) {
+    return await condoService.updateCondo(id, data);
   }
   
   async deleteCondoByID(id: number) {

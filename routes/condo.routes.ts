@@ -3,11 +3,11 @@ import { Router, Request, Response } from 'express'
 import { CondoController } from '../controllers/condo.controller'
 
 const app = express()
-const route = Router()
+const condoRoutes = Router()
 
 const condoController = new CondoController()
 
-route.get('/condo', async (req: Request, res: Response): Promise<any> => {
+condoRoutes.get('/condo', async (req: Request, res: Response): Promise<any> => {
     try {
         const condos = await condoController.getAllCondos()
         return res.json(condos)
@@ -16,7 +16,7 @@ route.get('/condo', async (req: Request, res: Response): Promise<any> => {
     }
 })
 
-route.get('/condo/:id', async (req: Request, res: Response): Promise<any> => {
+condoRoutes.get('/condo/:id', async (req: Request, res: Response): Promise<any> => {
     try {
         const { id } = req.params
         const condo = await condoController.getCondoByID(Number(id))
@@ -26,9 +26,9 @@ route.get('/condo/:id', async (req: Request, res: Response): Promise<any> => {
     }
 })
 
-route.get('/condo/:name', async (req: Request, res: Response): Promise<any> => {
+condoRoutes.get('/condo/:name', async (req: Request, res: Response): Promise<any> => {
     try {
-        const { name } = req.params
+        const { name } = req.body
         const condo = await condoController.getCondoByName(name)
         return res.json(condo)
     } catch (error) {
@@ -36,25 +36,28 @@ route.get('/condo/:name', async (req: Request, res: Response): Promise<any> => {
     }
 })
 
-route.post('/condo', async (req: Request, res: Response): Promise<any> => {
+condoRoutes.post('/condo', async (req: Request, res: Response): Promise<any> => {
     try {
-        const condo = await condoController.getCondoByID(req.body)
+        const condo = await condoController.createCondo(req.body)
         return res.json(condo)
     } catch (error) {
+        console.error("🚀 ~ condoRoutes.post ~ error:", error)
         throw new Error('Erro ao cadastrar condominio')
     }
 })
 
-route.put('/condo/:id', async (req: Request, res: Response): Promise<any> => {
+condoRoutes.put('/condo/:id', async (req: Request, res: Response): Promise<any> => {
     try {
-        const condo = await condoController.updateCondo(req.body)
+        const { id } = req.params
+        const condo = await condoController.updateCondo(Number(id), req.body)
         return res.json(condo)
     } catch (error) {
+        console.error("🚀 ~ condoRoutes.put ~ error:", error)
         throw new Error('Erro ao atualizar condominio')
     }
 })
 
-route.delete('/condo/:id', async (req: Request, res: Response): Promise<any> => {
+condoRoutes.delete('/condo/:id', async (req: Request, res: Response): Promise<any> => {
     try {
         const { id } = req.params
         const condo = await condoController.deleteCondoByID(Number(id))
@@ -64,9 +67,9 @@ route.delete('/condo/:id', async (req: Request, res: Response): Promise<any> => 
     }
 })
 
-route.delete('/condo/:name', async (req: Request, res: Response): Promise<any> => {
+condoRoutes.delete('/condo', async (req: Request, res: Response): Promise<any> => {
     try {
-        const { name } = req.params
+        const { name } = req.body 
         const condo = await condoController.deleteCondoByName(name)
         return res.json(condo)
     } catch (error) {
@@ -74,4 +77,4 @@ route.delete('/condo/:name', async (req: Request, res: Response): Promise<any> =
     }
 })
 
-app.use(route)
+export default condoRoutes
