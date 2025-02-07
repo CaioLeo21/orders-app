@@ -7,50 +7,54 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model condominium {
-  id_condominium Int      @id @default(autoincrement())
-  name           String   @db.VarChar(255)
-  responsible    String   @db.VarChar(255)
-  doorman        doorman?
-  house          house?
-}
-
 model doorman {
-  id_doorman  Int         @id @default(autoincrement())
-  name        String      @db.VarChar(255)
-  condominium condominium @relation(fields: [id_doorman], references: [id_condominium], onDelete: NoAction, onUpdate: NoAction, map: "doorman_id_fkey")
-  order       order?
+  id       Int    @id(map: "doorman_pk") @default(autoincrement())
+  name     String @db.VarChar
+  id_condo Int
+  condo    condo  @relation(fields: [id_condo], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "doorman_condo_id_condo_fk")
+  order    order?
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model house {
-  id_house    Int         @id @default(autoincrement())
-  block       String?     @db.VarChar(255)
-  number      String?     @db.VarChar(255)
-  condominium condominium @relation(fields: [id_house], references: [id_condominium], onDelete: NoAction, onUpdate: NoAction, map: "house_id_fkey")
-  person      person?
+  id       Int      @id(map: "house_pk") @default(autoincrement())
+  block    String   @db.VarChar
+  number   String   @db.VarChar
+  id_condo Int?
+  condo    condo?   @relation(fields: [id_condo], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "house_condo_id_fk")
+  person   person[]
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model person {
-  id_person   Int     @unique(map: "person_id_key") @default(autoincrement())
-  name        String  @db.VarChar(255)
-  type        String  @db.VarChar(255)
+  id          Int     @id(map: "person_pk") @default(autoincrement())
+  name        String  @db.VarChar
+  type        String  @db.VarChar
   status      Boolean
-  observation String? @db.VarChar(255)
-  email       String? @db.VarChar(255)
-  phone       String? @db.VarChar(255)
-  cpf         String  @db.VarChar(255)
-  order       order?
-  house       house   @relation(fields: [id_person], references: [id_house], onDelete: NoAction, onUpdate: NoAction, map: "person_id_fkey")
-
-  @@id([id_person, cpf])
+  observation String? @db.VarChar
+  email       String? @db.VarChar
+  phone       String? @db.VarChar
+  cpf         String? @unique(map: "person_pk_3") @db.VarChar
+  id_house    Int
+  order       order[]
+  house       house   @relation(fields: [id_house], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "person_house_id_fk")
 }
 
 model order {
-  id_order Int      @id(map: "ORDER_pkey") @default(autoincrement())
-  date     DateTime @db.Timestamp(6)
-  sender   String?  @db.VarChar(255)
-  doorman  doorman  @relation(fields: [id_order], references: [id_doorman], onDelete: NoAction, onUpdate: NoAction, map: "ORDER_id_fkey")
-  person   person   @relation(fields: [id_order], references: [id_person], onDelete: NoAction, onUpdate: NoAction, map: "ORDER_id_fkey1")
+  id         Int      @id(map: "order_pk") @default(autoincrement())
+  date       DateTime @db.Date
+  sender     String?  @db.VarChar
+  type       String?  @db.VarChar
+  id_person  Int
+  id_doorman Int      @unique(map: "order_pk_3")
+  doorman    doorman  @relation(fields: [id_doorman], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "order_doorman_id_fk")
+  person     person   @relation(fields: [id_person], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "order_person_id_fk")
+}
+
+model condo {
+  id          Int       @id(map: "condo_pk") @default(autoincrement())
+  name        String    @unique(map: "condo_pk_2") @db.VarChar
+  responsible String?   @db.VarChar
+  doorman     doorman[]
+  house       house[]
 }
