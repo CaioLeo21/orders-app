@@ -2,31 +2,32 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export class DoormanService {
-  async getAllDoormen() {
+  async getAllDoorman() {
     return await prisma.doorman.findMany();
   }
 
-  async getDoormenById(id: number) {
+  async getDoormanById(id: number) {
     return await prisma.doorman.findUnique({ where: { id } });
   }
 
-  async getDoormenByName(name: string) {
+  async getDoormanByName(name: string) {
     return await prisma.doorman.findFirst({ where: { name } });
   }
 
-  async createDoormen(data: { name: string, id_condo: number }) {
+  async createDoorman(data: { name: string, id_condo: number }) {
     return await prisma.doorman.create({ data });
   }
 
-  async updateDoormen(id: number, data: { name: string, type: string, }) {
+  async updateDoorman(id: number, data: { name: string, type: string, }) {
     return await prisma.doorman.update({ where: { id }, data });
   }
 
-  async deleteDoormenById(id: number) {
+  async deleteDoormanById(id: number) {
     return await prisma.doorman.delete({ where: { id } });
   }
 
-  // async deleteDoormenByName(name: string) {
+  // TODO: DELETAR PELO NOME
+  // async deleteDoormanByName(name: string) {
   //   return await prisma.doorman.findFirst({ where: { name } })
   //   .then(async (res: any) => {
   //     await prisma.doorman.delete({ where: { res } });
