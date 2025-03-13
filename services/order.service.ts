@@ -3,22 +3,27 @@ const prisma = new PrismaClient();
 
 export class OrderService {
   async getAllOrders() {
-    return await prisma.oRDER.findMany();
+    return await prisma.order.findMany();
   }
 
-  async getOrder(id: number) {
-    return await prisma.oRDER.findUnique({ where: { id } });
+  async getOrderById(id: number) {
+    return await prisma.order.findUnique({ where: { id } });
   }
 
-  async createOrder(data: { name: string, type: string, }) {
-    // return await prisma.oRDER.create({ data });
+  async getOrderByDescription(description: string) {
+    return await prisma.order.findFirst({ where: { description } });
   }
 
-  async updateOrder(id: number, data: { name: string, type: string, }) {
-    // return await prisma.oRDER.update({ where: { id }, data });
+  // TODO Verificar como vai ficar o tipo da data
+  async createOrder(data: { date: string, sender: string, type: string, description: string, id_person: number, id_doorman: number }) {
+    return await prisma.order.create({ data });
+  }
+
+  async updateOrder(id: number, data: { date: string, sender: string, type: string, description: string, id_person: number, id_doorman: number }) {
+    return await prisma.order.update({ where: { id }, data });
   }
 
   async deleteOrder(id: number) {
-    return await prisma.oRDER.delete({ where: { id } });
+    return await prisma.order.delete({ where: { id } });
   }
 }

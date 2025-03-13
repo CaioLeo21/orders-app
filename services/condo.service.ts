@@ -1,5 +1,4 @@
 import { PrismaClient } from "@prisma/client";
-import { condoSchema } from "../schemas";
 const prisma = new PrismaClient();
 
 export class CondoService {
@@ -16,8 +15,7 @@ export class CondoService {
   }
   
   async createCondo(data: { name: string, responsible?: string }) {
-    const validatedData = condoSchema.parse(data)
-    return await prisma.condo.create({ data: validatedData })
+    return await prisma.condo.create({ data })
   }
 
   async updateCondo(id: number, data: { name?: string, responsible?: string }) {

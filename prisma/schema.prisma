@@ -41,14 +41,15 @@ model person {
 }
 
 model order {
-  id         Int      @id(map: "order_pk") @default(autoincrement())
-  date       DateTime @db.Date
-  sender     String?  @db.VarChar
-  type       String?  @db.VarChar
-  id_person  Int
-  id_doorman Int      @unique(map: "order_pk_3")
-  doorman    doorman  @relation(fields: [id_doorman], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "order_doorman_id_fk")
-  person     person   @relation(fields: [id_person], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "order_person_id_fk")
+  id          Int      @id(map: "order_pk") @default(autoincrement())
+  date        DateTime @db.Date
+  sender      String?  @db.VarChar
+  type        String?  @db.VarChar
+  description String? @db.VarChar
+  id_person   Int
+  id_doorman  Int      @unique(map: "order_pk_3")
+  doorman     doorman  @relation(fields: [id_doorman], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "order_doorman_id_fk")
+  person      person   @relation(fields: [id_person], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "order_person_id_fk")
 }
 
 model condo {

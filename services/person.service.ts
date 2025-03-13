@@ -7,19 +7,21 @@ export class PersonService {
     return await prisma.person.findMany();
   }
 
-  async getPerson(id?: number, cpf?: string, email?: string) {
-    return await prisma.person.findUnique({ where: { id_person, cpf, email } });
+  // TODO: PEGAR ID PELO CPF OU EMAIL
+  async getPersonById(id: number) {
+    return await prisma.person.findUnique({ where: { id } });
   }
 
-  async createPerson(data: { name: string, type: PersonType, status: boolean, observation?: string, email?: string, phone?: string, cpf?: string }) {
+  async createPerson(data: { name: string, type: PersonType, status: boolean, observation?: string, email?: string, phone?: string, cpf?: string, id_house: number }) {
     return await prisma.person.create({ data });
   }
 
-  async updatePerson(id: number, data: { name: string, type: string, }) {
-    // return await prisma.person.update({ where: { id }, data });
+  async updatePerson(id: number, data: { name: string, type: PersonType, status: boolean, observation?: string, email?: string, phone?: string, cpf?: string, id_house: number }) {
+    return await prisma.person.update({ where: { id }, data });
   }
 
-  async deletePerson(id: number) {
+    // TODO: DELETAR PELO CPF OU EMAIL
+  async deletePersonById(id: number) {
     return await prisma.person.delete({ where: { id } });
   }
 }

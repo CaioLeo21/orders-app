@@ -6,16 +6,16 @@ export class HouseService {
     return await prisma.house.findMany();
   }
 
-  async getHouse(id: number) {
+  async getHouseById(id: number) {
     return await prisma.house.findUnique({ where: { id } });
   }
 
-  async createHouse(data: { name: string, type: string, }) {
-    // return await prisma.house.create({ data });
+  async createHouse(data: { block: string, number: string, id_condo: number }) {
+    return await prisma.house.create({ data });
   }
 
-  async updateHouse(id: number, data: { name: string, type: string, }) {
-    // return await prisma.house.update({ where: { id }, data });
+  async updateHouse(id: number, data: { block: string, number: string, id_condo: number }) {
+    return await prisma.house.update({ where: { id }, data });
   }
 
   async deleteHouse(id: number) {
