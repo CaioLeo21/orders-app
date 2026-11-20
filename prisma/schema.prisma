@@ -1,3 +1,7 @@
+// Modelagem iPackage v2 (docs/backend-handoff.md do condo-order-hub, seção 4).
+// Banco em português snake_case (fiel ao .mwb); código em inglês camelCase via @map/@@map.
+// Os CHECKs ficam na migration SQL (o Prisma não os declara, mas os preserva).
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,55 +11,265 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model doorman {
-  id       Int    @id(map: "doorman_pk") @default(autoincrement())
-  name     String @db.VarChar
-  id_condo Int
-  condo    condo  @relation(fields: [id_condo], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "doorman_condo_id_condo_fk")
-  order    order?
+// ---------------------------------------------------------------------------
+// Enums (valores = os mesmos strings usados pelo frontend)
+// ---------------------------------------------------------------------------
+
+enum CondominiumType {
+  apartment
+  house
+
+  @@map("tipo_condominio")
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model house {
-  id       Int      @id(map: "house_pk") @default(autoincrement())
-  block    String   @db.VarChar
-  number   String   @db.VarChar
-  id_condo Int?
-  condo    condo?   @relation(fields: [id_condo], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "house_condo_id_fk")
-  person   person[]
+enum RecordStatus {
+  active
+  inactive
+
+  @@map("status_registro")
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model person {
-  id          Int     @id(map: "person_pk") @default(autoincrement())
-  name        String  @db.VarChar
-  type        String  @db.VarChar
-  status      Boolean
-  observation String? @db.VarChar
-  email       String? @db.VarChar
-  phone       String? @db.VarChar
-  cpf         String? @unique(map: "person_pk_3") @db.VarChar
-  id_house    Int
-  order       order[]
-  house       house   @relation(fields: [id_house], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "person_house_id_fk")
+enum Profile {
+  doorman // Porteiro
+  manager // Responsável (síndico)
+  admin // Administrador do condomínio
+  owner // Equipe iPackage (sem condomínio)
+
+  @@map("perfil_usuario")
 }
 
-model order {
-  id          Int      @id(map: "order_pk") @default(autoincrement())
-  date        DateTime @db.Date
-  sender      String?  @db.VarChar
-  type        String?  @db.VarChar
-  description String? @db.VarChar
-  id_person   Int
-  id_doorman  Int      @unique(map: "order_pk_3")
-  doorman     doorman  @relation(fields: [id_doorman], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "order_doorman_id_fk")
-  person      person   @relation(fields: [id_person], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "order_person_id_fk")
+enum Shift {
+  morning
+  afternoon
+  night
+
+  @@map("turno")
 }
 
-model condo {
-  id          Int       @id(map: "condo_pk") @default(autoincrement())
-  name        String    @unique(map: "condo_pk_2") @db.VarChar
-  responsible String?   @db.VarChar
-  doorman     doorman[]
-  house       house[]
+enum ResidentType {
+  owner
+  tenant
+  other
+
+  @@map("tipo_morador")
+}
+
+enum PackageKind {
+  envelope
+  box
+  bag
+  other
+
+  @@map("tipo_encomenda")
+}
+
+enum PackageSize {
+  small
+  medium
+  large
+
+  @@map("tamanho_encomenda")
+}
+
+// ---------------------------------------------------------------------------
+// Condomínio
+// ---------------------------------------------------------------------------
+
+model Condominium {
+  id        Int             @id @default(autoincrement()) @map("id_condominio")
+  name      String          @map("nome") @db.VarChar(120)
+  type      CondominiumType @map("tipo_condominio")
+  slug      String          @unique @db.VarChar(60)
+  status    RecordStatus    @default(active)
+  address   String?         @map("endereco") @db.VarChar(255)
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  units     Unit[]
+  residents Resident[]
+  users     User[]
+  packages  Package[]
+  invoices  Invoice[]
+
+  @@map("condominio")
+}
+
+// ---------------------------------------------------------------------------
+// Unidade (Casa): apartamento (bloco + apartamento) ou casa (quadra + casa + rua)
+// ---------------------------------------------------------------------------
+
+model Unit {
+  id            Int       @id @default(autoincrement()) @map("id_casa")
+  condominiumId Int       @map("fk_id_condominio")
+  block         String?   @map("bloco") @db.VarChar(30)
+  apartment     String?   @map("apartamento") @db.VarChar(30)
+  lot           String?   @map("quadra") @db.VarChar(30)
+  house         String?   @map("casa") @db.VarChar(30)
+  street        String?   @map("rua") @db.VarChar(120)
+  /// lower(trim(grupo)) || '|' || lower(trim(numero)) — mantida pelo serviço (RN-U2)
+  key           String    @map("chave") @db.VarChar(80)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  condominium Condominium    @relation(fields: [condominiumId], references: [id], onDelete: Restrict)
+  residents   ResidentUnit[]
+
+  @@unique([condominiumId, key], map: "casa_condominio_chave_key")
+  @@index([condominiumId], map: "fk_casa_condominio_idx")
+  @@map("casa")
+}
+
+// ---------------------------------------------------------------------------
+// Morador e vínculo Morador_Casa (N:N)
+// ---------------------------------------------------------------------------
+
+model Resident {
+  id                      Int          @id @default(autoincrement()) @map("id_morador")
+  condominiumId           Int          @map("fk_id_condominio")
+  name                    String       @map("nome") @db.VarChar(120)
+  phone                   String?      @map("telefone") @db.VarChar(11)
+  residentType            ResidentType @map("tipo_morador")
+  residentTypeDescription String?      @map("tipo_morador_descricao") @db.VarChar(60)
+  status                  RecordStatus @default(active)
+  createdAt               DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt               DateTime?    @map("deleted_at") @db.Timestamptz(3)
+
+  condominium Condominium    @relation(fields: [condominiumId], references: [id], onDelete: Restrict)
+  units       ResidentUnit[]
+
+  @@index([condominiumId, status], map: "morador_condominio_status_idx")
+  @@map("morador")
+}
+
+model ResidentUnit {
+  id         Int       @id @default(autoincrement()) @map("id_morador_casa")
+  residentId Int       @map("fk_id_morador")
+  unitId     Int       @map("fk_id_casa")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  endedAt    DateTime? @map("encerrado_em") @db.Timestamptz(3)
+
+  resident Resident  @relation(fields: [residentId], references: [id], onDelete: Restrict)
+  unit     Unit      @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  packages Package[]
+
+  @@unique([residentId, unitId], map: "morador_casa_morador_casa_key")
+  @@index([unitId], map: "fk_morador_casa_casa_idx")
+  @@map("morador_casa")
+}
+
+// ---------------------------------------------------------------------------
+// Usuário (porteiro, responsável, administrador, dono do iPackage)
+// ---------------------------------------------------------------------------
+
+model User {
+  matricula          Int          @id @default(autoincrement())
+  passwordHash       String       @map("senha") @db.VarChar(255)
+  name               String       @map("nome") @db.VarChar(120)
+  profile            Profile      @map("perfil")
+  shift              Shift?       @map("turno")
+  status             RecordStatus @default(active)
+  mustChangePassword Boolean      @default(true) @map("trocar_senha")
+  tokenVersion       Int          @default(0) @map("versao_token")
+  passwordChangedAt  DateTime?    @map("senha_alterada_em") @db.Timestamptz(3)
+  lastLoginAt        DateTime?    @map("ultimo_acesso_em") @db.Timestamptz(3)
+  condominiumId      Int?         @map("fk_id_condominio")
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt          DateTime?    @map("deleted_at") @db.Timestamptz(3)
+
+  condominium       Condominium? @relation(fields: [condominiumId], references: [id], onDelete: Restrict)
+  receivedPackages  Package[]    @relation("PackageReceivedBy")
+  deliveredPackages Package[]    @relation("PackageDeliveredBy")
+  deletedPackages   Package[]    @relation("PackageDeletedBy")
+
+  @@index([condominiumId, status], map: "usuario_condominio_status_idx")
+  @@map("usuario")
+}
+
+// ---------------------------------------------------------------------------
+// Encomenda
+// ---------------------------------------------------------------------------
+
+model Package {
+  id                  Int         @id @default(autoincrement()) @map("id_encomenda")
+  condominiumId       Int         @map("fk_id_condominio")
+  residentUnitId      Int         @map("fk_id_morador_casa")
+  senderCompany       String      @map("remetente") @db.VarChar(120)
+  trackingCode        String?     @map("codigo_rastreio") @db.VarChar(60)
+  kind                PackageKind @map("tipo")
+  size                PackageSize @map("tamanho")
+  notes               String?     @map("observacao") @db.VarChar(500)
+  /// Chave do objeto no storage (não a URL)
+  photoKey            String?     @map("link_foto") @db.VarChar(500)
+  receivedAt          DateTime    @default(now()) @map("data_chegada") @db.Timestamptz(3)
+  receivedById        Int         @map("fk_usuario_matricula")
+  collectedAt         DateTime?   @map("data_retirada") @db.Timestamptz(3)
+  collectedBy         String?     @map("recebedor") @db.VarChar(120)
+  collectedByDocument String?     @map("documento_recebedor") @db.VarChar(30)
+  /// Chave do objeto no storage (não a URL)
+  signatureKey        String?     @map("link_assinatura") @db.VarChar(500)
+  deliveredById       Int?        @map("fk_usuario_retirada")
+  createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt           DateTime?   @map("deleted_at") @db.Timestamptz(3)
+  deletionReason      String?     @map("motivo_exclusao") @db.VarChar(500)
+  deletedById         Int?        @map("fk_usuario_exclusao")
+
+  condominium  Condominium  @relation(fields: [condominiumId], references: [id], onDelete: Restrict)
+  residentUnit ResidentUnit @relation(fields: [residentUnitId], references: [id], onDelete: Restrict)
+  receivedBy   User         @relation("PackageReceivedBy", fields: [receivedById], references: [matricula], onDelete: Restrict)
+  deliveredBy  User?        @relation("PackageDeliveredBy", fields: [deliveredById], references: [matricula], onDelete: Restrict)
+  deletedBy    User?        @relation("PackageDeletedBy", fields: [deletedById], references: [matricula], onDelete: Restrict)
+
+  // Listagem principal: pendentes/retiradas do condomínio, mais recentes primeiro
+  @@index([condominiumId, collectedAt], map: "encomenda_condominio_retirada_idx")
+  @@index([condominiumId, receivedAt(sort: Desc)], map: "encomenda_condominio_chegada_idx")
+  @@index([residentUnitId], map: "fk_encomenda_morador_casa_idx")
+  @@index([receivedById], map: "fk_encomenda_usuario_idx")
+  @@index([deliveredById], map: "fk_encomenda_usuario_retirada_idx")
+  @@index([deletedById], map: "fk_encomenda_usuario_exclusao_idx")
+  @@map("encomenda")
+}
+
+// ---------------------------------------------------------------------------
+// Planos (Precificacao) e cobranças (Faturamento)
+// ---------------------------------------------------------------------------
+
+model Plan {
+  id          Int       @id @default(autoincrement()) @map("id_precificacao")
+  description String    @map("descricao") @db.VarChar(60)
+  unitLimit   Int       @map("limite_unidade")
+  price       Decimal   @map("preco") @db.Decimal(10, 2)
+  validFrom   DateTime  @map("vigencia_inicio") @db.Date
+  validUntil  DateTime? @map("vigencia_fim") @db.Date
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  invoices Invoice[]
+
+  @@map("precificacao")
+}
+
+model Invoice {
+  id            Int       @id @default(autoincrement()) @map("id_faturamento")
+  condominiumId Int       @map("fk_id_condominio")
+  planId        Int       @map("fk_id_precificacao")
+  /// Sempre o dia 1 do mês de competência
+  competence    DateTime  @map("competencia") @db.Date
+  amountDue     Decimal   @map("valor_a_pagar") @db.Decimal(10, 2)
+  amountPaid    Decimal?  @map("valor_pago") @db.Decimal(10, 2)
+  paidAt        DateTime? @map("pago_em") @db.Date
+  dueDate       DateTime  @map("vencimento") @db.Date
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  condominium Condominium @relation(fields: [condominiumId], references: [id], onDelete: Restrict)
+  plan        Plan        @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@unique([condominiumId, competence], map: "faturamento_condominio_competencia_key")
+  @@index([competence], map: "faturamento_competencia_idx")
+  @@index([planId], map: "fk_faturamento_precificacao_idx")
+  @@map("faturamento")
 }

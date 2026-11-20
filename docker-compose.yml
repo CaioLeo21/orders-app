@@ -1,0 +1,49 @@
+# Infra local: Postgres (bancos ipackage e ipackage_test) e, opcionalmente, MinIO (S3).
+#   docker compose up -d db              → só o banco
+#   docker compose --profile s3 up -d    → banco + MinIO (console em http://localhost:9001)
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ipackage
+      POSTGRES_PASSWORD: ipackage
+      POSTGRES_DB: ipackage
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ipackage -d ipackage"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    profiles: ["s3"]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ipackage
+      MINIO_ROOT_PASSWORD: ipackage-secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+
+  minio-setup:
+    image: minio/mc:latest
+    profiles: ["s3"]
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 ipackage ipackage-secret; do sleep 1; done;
+      mc mb --ignore-existing local/ipackage;
+      mc anonymous set none local/ipackage;
+      "
+
+volumes:
+  pgdata:
+  miniodata:
